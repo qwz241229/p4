@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- Include the ECharts file you just downloaded -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  </head>
+  <body>
+    <!-- Prepare a DOM with a defined width and height for ECharts -->
+    <div id="main" style="width: 1600px;height:900px;"></div>
+    <script type="text/javascript">
+      // Initialize the echarts instance based on the prepared dom
+      var myChart = echarts.init(document.getElementById('main'));
+
+      const gfile_url = "/data/anl.YANG.86400";
+
+      function qw_fetch_data(url){
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, false); // The 'false' makes the request blocking
+        xhr.send();
+
+        if (xhr.status === 200) {
+          //console.log('File content:', xhr.responseText); // Logs the file content if the request is successful
+          return xhr.responseText
+        } else {
+          console.error('Error fetching file:', xhr.statusText);
+          return xhr.statusText
+        }
+      }
+
+      let my_data = qw_fetch_data(gfile_url)
+
+      my_data = my_data.trim().split("\n").map(row => row.split(","));
+      my_data =  my_data.slice(1)
+      my_data_f = my_data.map(parseFloat)
+      console.log('line 32', my_data)
+      const colorList = ['#c23531', '#2f4554', '#61a0a8', '#d48265', '#91c7ae', '#749f83', '#ca8622', '#bda29a', '#6e7074', '#546570', '#c4ccd3'];
+      const labelFont = 'bold 12px Sans-serif';
+      function calculateMA(dayCount, data) {
+        let result = [];
+        for (let i = 0, len = data.length; i < len; i++) {
+          if (i < dayCount) {
+            result.push('-');
+            continue;
+          }
+          let sum = 0;
+          for (let j = 0; j < dayCount; j++) {
+            sum += +data[i - j][1];
+          }
+          result.push((sum / dayCount).toFixed(2));
+        }
+        return result;
+      }
+      let dates = my_data.map(row => row[0]);
+      //console.log("line 54", dates_string)
+      //let dates = dates_s.map(parseFloat);
+      dates = dates.map(item => "20" + item.slice(0, 2) + "-" + item.slice(2, 4) + "-" + item.slice(4, 6));
+      console.log("line 56", dates);
+      let data_s = my_data.map(row => row.slice(1, 5));
+      //console.log("line 56", data);
+      let data = data_s.map(row => row.map(parseFloat));
+      for (let i = 0; i < data.length; i++) {
+        [data[i][1], data[i][3]] = [data[i][3], data[i][1]];
+      }
+      console.log("line 60", data);
+      let volumes_s = my_data.map(row => row[5])
+      //console.log("line 62", volumes)
+      let volumes = volumes_s.map(parseFloat);
+      console.log("line 64", volumes);
+
+      const dataMA5 = calculateMA(5, data);
+      const dataMA10 = calculateMA(10, data);
+      const dataMA20 = calculateMA(20, data);
+      let macdh_s = my_data.map(row => row[6])
+      //console.log("line 71", macdh_s)
+      let macdh = macdh_s.map(parseFloat);
+      console.log("line 73", macdh)
+      let rsi_s = my_data.map(row => row[7])
+      //console.log("line 75", rsi_s)
+      let rsi = rsi_s.map(parseFloat);
+      console.log("line 77", rsi);
+
+      option = {
+        barWidth: '80%',
+        animation: false,
+        color: colorList,
+        title: {
+          left: 'center',
+          text: 'Candlestick on Mobile'
+        },
+        legend: {
+          top: 30,
+          data: ['日K', 'MA5', 'MA10', 'MA20', 'MA30']
+        },
+        tooltip: {
+          triggerOn: 'none',
+          transitionDuration: 0,
+          confine: true,
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: '#333',
+          backgroundColor: 'rgba(255,255,255,0.9)',
+          textStyle: {
+            fontSize: 12,
+            color: '#333'
+          },
+          position: function (pos, params, el, elRect, size) {
+            const obj = {
+              top: 60
+            };
+            obj[['left', 'right'][+(pos[0] < size.viewSize[0] / 2)]] = 5;
+            return obj;
+          }
+        },
+        axisPointer: {
+          link: [
+            {
+              xAxisIndex: [0, 1]
+            }
+          ]
+        },
+        dataZoom: [
+          { type: 'slider',
+            xAxisIndex: [0, 1],
+            realtime: false,
+            start: 20,
+            end: 70,
+            top: 65,
+            height: 20,
+            handleIcon:
+              'path://M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+            handleSize: '120%'
+          },
+          { type: 'inside',
+            xAxisIndex: [0, 2, 3],
+            start: 40,
+            end: 70,
+            top: 30,
+            height: 20
+          }
+        ],
+        xAxis: [
+          { type: 'category',
+            data: dates,
+            boundaryGap: false,
+            axisLine: { lineStyle: { color: '#777' } },
+            axisLabel: {
+              formatter: function (value) {
+                return echarts.format.formatTime('MM-dd', value);
+              }
+            },
+            min: 'dataMin',
+            max: 'dataMax',
+            axisPointer: {
+              show: true
+            }
+          },
+          { type: 'category',
+            gridIndex: 1,
+            data: dates,
+            boundaryGap: false,
+            splitLine: { show: false },
+            axisLabel: { show: false },
+            axisTick: { show: false },
+            axisLine: { lineStyle: { color: '#777' } },
+            min: 'dataMin',
+            max: 'dataMax',
+            axisPointer: {
+              type: 'shadow',
+              label: { show: false },
+              triggerTooltip: true,
+              handle: {
+                show: true,
+                margin: 30,
+                color: '#B80C00'
+              }
+            }
+          },
+          { type: 'category',
+            gridIndex: 2,
+            data: dates,
+            boundaryGap: false,
+            splitLine: { show: false },
+            axisLabel: { show: false },
+            axisTick: { show: false },
+            axisLine: { lineStyle: { color: '#777' } },
+            min: 'dataMin',
+            max: 'dataMax',
+            axisPointer: {
+              type: 'shadow',
+              label: { show: false },
+              triggerTooltip: true,
+              handle: {
+                show: true,
+                margin: 30,
+                color: '#B80C00'
+              }
+            }
+          },
+          { type: 'category',
+            gridIndex: 3,
+            data: dates,
+            boundaryGap: false,
+            splitLine: { show: false },
+            axisLabel: { show: false },
+            axisTick: { show: false },
+            axisLine: { lineStyle: { color: '#777' } },
+            min: 'dataMin',
+            max: 'dataMax',
+            axisPointer: {
+              type: 'shadow',
+              label: { show: false },
+              triggerTooltip: true,
+              handle: {
+                show: true,
+                margin: 30,
+                color: '#B80C00'
+              }
+            }
+          },
+        ],
+        yAxis: [
+          { scale: true,
+            splitNumber: 2,
+            axisLine: { lineStyle: { color: '#777' } },
+            splitLine: { show: true },
+            axisTick: { show: false },
+            axisLabel: {
+              inside: true,
+              formatter: '{value}\n'
+            }
+          },
+          { scale: true,
+            gridIndex: 1,
+            splitNumber: 2,
+            axisLabel: { show: false },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            splitLine: { show: false }
+          },
+          { scale: true,
+            gridIndex: 2,
+            splitNumber: 3,
+            axisLabel: { show: false },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            splitLine: { show: false }
+          },
+          { scale: true,
+            gridIndex: 3,
+            splitNumber: 4,
+            axisLabel: { show: false },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            splitLine: { show: false }
+          },
+        ],
+        grid: [
+          { left: 20,
+            right: 20,
+            top: 110,
+            height: 520
+          },
+          { left: 20,
+            right: 20,
+            height: 60,
+            top: 560
+          },
+          { left: 20,
+            right: 20,
+            height: 40,
+            top: 660
+          },
+          { left: 20,
+            right: 20,
+            height: 40,
+            top: 730
+          }
+        ],
+        graphic: [
+          { type: 'group',
+            left: 'center',
+            top: 70,
+            width: 300,
+            bounding: 'raw',
+            children: [
+              {
+                id: 'MA5',
+                type: 'text',
+                style: { fill: colorList[1], font: labelFont },
+                left: 0
+              },
+              {
+                id: 'MA10',
+                type: 'text',
+                style: { fill: colorList[2], font: labelFont },
+                left: 'center'
+              },
+              {
+                id: 'MA20',
+                type: 'text',
+                style: { fill: colorList[3], font: labelFont },
+                right: 0
+              }
+            ]
+          }
+        ],
+        series: [
+          { name: 'Volume',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            itemStyle: {
+              color: '#7fbe9e'
+            },
+            emphasis: {
+              itemStyle: {
+                color: '#140'
+              }
+            },
+            data: volumes
+          },
+          { name: 'macdh',
+            type: 'bar',
+            xAxisIndex: 2,
+            yAxisIndex: 2,
+            itemStyle: {
+              color: '#7fbe9e'
+            },
+            emphasis: {
+              itemStyle: {
+                color: '#140'
+              }
+            },
+            data: macdh
+          },
+          {
+            name: 'rsi',
+            type: 'bar',
+            xAxisIndex: 3,
+            yAxisIndex: 3,
+            itemStyle: {
+              color: '#7fbe9e'
+            },
+            emphasis: {
+              itemStyle: {
+                color: '#140'
+              }
+            },
+            data: rsi
+          },
+          { name: '日K',
+            type: 'candlestick',
+            data: data,
+            itemStyle: {
+              color: '#ef232a',
+              color0: '#14b143',
+              borderColor: '#ef232a',
+              borderColor0: '#14b143'
+            },
+            emphasis: {
+              itemStyle: {
+                color: 'black',
+                color0: '#444',
+                borderColor: 'black',
+                borderColor0: '#444'
+              }
+            }
+          },
+          { name: 'MA5',
+            type: 'line',
+            data: dataMA5,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: {
+              width: 2
+            }
+          },
+          { name: 'MA10',
+            type: 'line',
+            data: dataMA10,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: {
+              width: 1
+            }
+          },
+          { name: 'MA20',
+            type: 'line',
+            data: dataMA20,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: {
+            width: 1
+            }
+          }
+        ]
+      };
+
+      // Display the chart using the configuration items and data just specified.
+      myChart.setOption(option);
+    </script>
